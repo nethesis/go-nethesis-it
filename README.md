@@ -1,5 +1,3 @@
-# go.nethesis.it
-
 Collection of public scripts by [Nethesis](https://www.nethesis.it)
 
 ## NethServer Enterprise install

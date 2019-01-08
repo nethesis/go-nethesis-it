@@ -1,1 +1,6 @@
 theme: jekyll-theme-minimal
+title: go.nethesis.it
+description: Nethesis script collection
+
+logo: logo.png
+show_downloads: false
