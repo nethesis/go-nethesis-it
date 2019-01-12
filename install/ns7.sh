@@ -14,7 +14,7 @@ function out_c
 function out
 {
     echo $@ | tee /dev/fd/3
-    out_c $@
+    out_c # add extra new line
 }
 
 
