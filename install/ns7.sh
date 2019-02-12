@@ -49,7 +49,7 @@ function exit_error
     out_c "See the log file for more info: $LOG_FILE"
     out_c
     out_c "If the problem persists, please contact Nethesis support."
-    out_c "Kindly provide to the support the following file: $LOG_FILE"
+    out_c "Kindly provide to the support the following files: $LOG_FILE /var/log/messages"
     exit 1
 }
 
@@ -103,6 +103,18 @@ yum --disablerepo=\* --enablerepo=nh-\* --disablerepo=nh-epel install epel-relea
 
 if [ $? -gt 0 ]; then
     exit_error "Can't install epel-release!"
+fi
+
+# If NethServer release is greater than installed CentOS, force the upgrade
+nethserver_release=$(cat /etc/e-smith/db/configuration/force/sysconfig/Version)
+latest_release=$(echo -e "$centos_release\n$nethserver_release" | sort -V -r | head -n 1)
+
+if [ "$latest_release" == "$nethserver_release" ]; then
+    out "Forcing CentOS upgrade from $centos_release to $nethserver_release"
+    yum --disablerepo=* --enablerepo=nh-\* update -y
+    echo $nethserver_release > /etc/yum/vars/nsrelease
+else
+    echo $centos_release > /etc/yum/vars/nsrelease
 fi
 
 # Make sure to access nethserver-iso group
