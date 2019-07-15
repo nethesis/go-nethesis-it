@@ -56,6 +56,9 @@ function exit_error
 
 TMP_DIR=/tmp/nethserver-enterprise-install
 LOG_FILE="$TMP_DIR/install.log"
+SYSTEM_ID=${1:?Missing SYSTEM_ID argument}
+export YUM1=${SYSTEM_ID}
+export YUM0=no
 
 # Prepare temporary directory
 mkdir -p $TMP_DIR
@@ -67,23 +70,143 @@ exec 3>&1 1>>${LOG_FILE} 2>&1
 
 centos_release=$(cat /etc/redhat-release  | grep -oP "\d\.\d\.\d+")
 
-out "Downloading nethserver-register ..." 
-# FIXME! cannot access Porthos if LK is missing:
-curl http://update.nethesis.it/nethserver/$centos_release/nethserver-register.rpm -o $TMP_DIR/nethserver-register.rpm
+cat >/etc/yum.repos.d/subscription.repo <<'EOF'
+#
+# Temporary NethServer Enterprise repository configuration
+#
 
-if [ ! -f $TMP_DIR/nethserver-register.rpm ]; then
-    exit_error "Current CentOS release ($centos_release) is not supported by NethServer Enterprise!"
-fi
+[nh-base]
+name=Nethesis mirror: CentOS Base $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=base&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-$releasever
+gpgcheck=1
+repo_gpgcheck=1
+enablegroups=0
+enabled=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
 
-out "Configuring yum repositories ..."
-pushd /
-# FIXME! nethesis.repo is a template now, the RPM file is just a placeholder
-rpm2cpio $TMP_DIR/nethserver-register.rpm | cpio -imdv ./etc/yum.repos.d/nethesis.repo
-popd
+[nh-updates]
+name=Nethesis mirror: CentOS Updates $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=updates&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-$releasever
+gpgcheck=1
+repo_gpgcheck=1
+enablegroups=0
+enabled=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
 
-if [ ! -f /etc/yum.repos.d/nethesis.repo ]; then
-    exit_error "Can't extract nethesis.repo file"
-fi
+[nh-extras]
+name=Nethesis mirror: CentOS Extras $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=extras&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-$releasever
+gpgcheck=1
+repo_gpgcheck=1
+enablegroups=0
+enabled=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
+
+[nh-centos-sclo-rh]
+name=Nethesis mirror: SCLo rh $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=centos-sclo-rh&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
+gpgcheck=1
+repo_gpgcheck=0
+enablegroups=0
+enabled=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
+
+[nh-centos-sclo-sclo]
+name=Nethesis mirror: SCLo sclo $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=centos-sclo-sclo&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
+gpgcheck=1
+repo_gpgcheck=0
+enablegroups=0
+enabled=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
+
+[nh-epel]
+name=Nethesis mirror: EPEL $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=epel&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-$releasever
+gpgcheck=1
+repo_gpgcheck=0
+enablegroups=0
+enabled=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
+
+[nh-nethserver-updates]
+name=Nethesis mirror: NethServer Updates $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=nethserver-updates&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NethServer-$releasever
+gpgcheck=1
+repo_gpgcheck=1
+enablegroups=1
+enabled=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
+
+[nh-nethserver-base]
+name=Nethesis mirror: NethServer Base $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=nethserver-base&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NethServer-$releasever
+gpgcheck=1
+repo_gpgcheck=1
+enablegroups=0
+enabled=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
+
+[nethesis-updates]
+name=Nethesis Updates $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=nethesis-updates&arch=$basearch&nsversion=$nsrelease&usetier=$YUM0
+failovermethod=priority
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NethServer-$releasever
+enablegroups=1
+enabled=1
+enablesubscription=1
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
+
+[nethesis-testing]
+name=Nethesis Testing $releasever
+mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=nethesis-testing&arch=$basearch&nsversion=$nsrelease
+failovermethod=priority
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NethServer-$releasever
+enablegroups=0
+enabled=0
+http_caching=none
+mirrorlist_expire=7200
+metadata_expire=7200
+
+EOF
 
 echo $centos_release > /etc/yum/vars/nsrelease
 
@@ -107,6 +230,15 @@ if [ $? -gt 0 ]; then
     exit_error "Can't install epel-release!"
 fi
 
+out "Extracting nethserver-register configuration ..."
+yum --disablerepo=\* --enablerepo=nh-\* downloadonly --downloaddir=$TMP_DIR nethserver-register -y
+pushd /
+rpm2cpio $TMP_DIR/nethserver-register-*.rpm | cpio -imdv ./etc/e-smith/db/configuration/force/sysconfig/Version
+if [ $? -gt 0 ]; then
+    exit_error "Can't install nethserver-register"
+fi
+popd
+
 # If NethServer release is greater than installed CentOS, force the upgrade
 nethserver_release=$(cat /etc/e-smith/db/configuration/force/sysconfig/Version)
 latest_release=$(echo -e "$centos_release\n$nethserver_release" | sort -V -r | head -n 1)
@@ -115,9 +247,6 @@ if [ "$latest_release" == "$nethserver_release" ]; then
     out "Forcing CentOS upgrade from $centos_release to $nethserver_release"
     yum --disablerepo=* --enablerepo=nh-\* update -y
     echo $nethserver_release > /etc/yum/vars/nsrelease
-else
-    # FIXME! this seems duplicate of line 88
-    echo $centos_release > /etc/yum/vars/nsrelease
 fi
 
 # Make sure to access nethserver-iso group
@@ -144,14 +273,7 @@ if [ $? -gt 0 ]; then
     exit_error "Configuration failed!"
 fi
 
-rpm -q nethserver-register &>/dev/null # do not fail if nethserver-register is already installed
-if [ $? -gt 0 ]; then
-    out "Installing nethserver-register ..."
-    yum --disablerepo=\* --enablerepo=nh-\* install $TMP_DIR/nethserver-register.rpm -y
-fi
-
-if [ $? -gt 0 ]; then
-    exit_error "Installation of nethsever-register failed!"
-fi
+/sbin/e-smith/config setprop subscription SystemId "${SYSTEM_ID}"
+/sbin/e-smith/signal-event software-repos-save
 
 end
