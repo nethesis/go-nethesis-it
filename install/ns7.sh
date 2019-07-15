@@ -68,6 +68,7 @@ exec 3>&1 1>>${LOG_FILE} 2>&1
 centos_release=$(cat /etc/redhat-release  | grep -oP "\d\.\d\.\d+")
 
 out "Downloading nethserver-register ..." 
+# FIXME! cannot access Porthos if LK is missing:
 curl http://update.nethesis.it/nethserver/$centos_release/nethserver-register.rpm -o $TMP_DIR/nethserver-register.rpm
 
 if [ ! -f $TMP_DIR/nethserver-register.rpm ]; then
@@ -76,6 +77,7 @@ fi
 
 out "Configuring yum repositories ..."
 pushd /
+# FIXME! nethesis.repo is a template now, the RPM file is just a placeholder
 rpm2cpio $TMP_DIR/nethserver-register.rpm | cpio -imdv ./etc/yum.repos.d/nethesis.repo
 popd
 
@@ -114,6 +116,7 @@ if [ "$latest_release" == "$nethserver_release" ]; then
     yum --disablerepo=* --enablerepo=nh-\* update -y
     echo $nethserver_release > /etc/yum/vars/nsrelease
 else
+    # FIXME! this seems duplicate of line 88
     echo $centos_release > /etc/yum/vars/nsrelease
 fi
 
