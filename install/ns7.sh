@@ -251,14 +251,14 @@ if [ $? -gt 0 ]; then
 fi
 
 out "Starting installation process. It will take a while ..."
-yum --disablerepo=\* --enablerepo=nh-\* --disablerepo=nh-epel install epel-release deltarpm -y
+yum -y --disablerepo=\* --enablerepo=nh-\* --disablerepo=nh-epel install epel-release deltarpm yum-utils
 
 if [ $? -gt 0 ]; then
     exit_error "Can't install epel-release!"
 fi
 
 out "Extracting nethserver-register configuration ..."
-yum -y --disablerepo=\* --enablerepo=nh-\*,nethesis-updates --downloadonly --downloaddir=$INSTALL_DIR install nethserver-register
+yumdownloader -y --disablerepo=\* --enablerepo=nethesis-updates --destdir=$INSTALL_DIR nethserver-register
 pushd /
 rpm2cpio $INSTALL_DIR/nethserver-register-*.rpm | cpio -imdv ./etc/e-smith/db/configuration/force/sysconfig/Version
 if [ $? -gt 0 ]; then
@@ -281,7 +281,7 @@ if [ "$latest_release" == "$nethserver_release" ]; then
 fi
 
 # Make sure to access nethserver-iso group
-yum --disablerepo=* --enablerepo=nh-\* install @nethserver-iso --setopt=nh-nethserver-updates.enablegroups=1 -y | tee /dev/fd/3
+yum -y --disablerepo=\* --enablerepo=nh-\*,nethesis-updates --setopt=nh-nethserver-updates.enablegroups=1 install @nethserver-iso | tee /dev/fd/3
 
 if [ $? -gt 0 ]; then
     exit_error "Can't install nethserver-iso group!"
