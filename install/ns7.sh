@@ -7,13 +7,13 @@
 # Output only on console
 function out_c
 {
-    echo $@ 1>&3
+    echo "${@}" 1>&3
 }
 
 # Output both on console and log
 function out
 {
-    echo $@ | tee /dev/fd/3
+    echo "${@}" | tee /dev/fd/3
     out_c # add extra new line
 }
 
@@ -40,33 +40,73 @@ function end {
     out_c "    Login: root" 
     out_c "    Password: <your_root_password>"
     out_c
+    out_c "It is then safe to remove $INSTALL_DIR"
     out_c
 }
 
 function exit_error
 {
-    out "[ERROR]" $@
+    out "[ERROR]" "${@}"
     out_c "See the log file for more info: $LOG_FILE"
     out_c
     out_c "If the problem persists, please contact Nethesis support."
-    out_c "Kindly provide to the support the following files: $LOG_FILE /var/log/messages"
+    out_c "Kindly provide to the support the following files:"
+    out_c "    $LOG_FILE"
+    out_c "    /var/log/messages"
     exit 1
 }
 
 
-TMP_DIR=/tmp/nethserver-enterprise-install
-LOG_FILE="$TMP_DIR/install.log"
-SYSTEM_ID=${1:?Missing SYSTEM_ID argument}
-export YUM1=${SYSTEM_ID}
-export YUM0=no
+function exit_help
+{
+    out_c "[ERROR] bad invocation! " "${@}"
+    out_c
+    out_c "Usage:"
+    out_c "    curl -sS https://go.nethesis.it/install/ns7.sh | bash -s - <SECRET>"
+    out_c
+    out_c "Create a new server and get the SECRET token here:"
+    out_c "    https://my.nethesis.it/#/servers?action=newServer"
+    exit 1
+}
 
-# Prepare temporary directory
-mkdir -p $TMP_DIR
+function json_pick
+{
+    python -c "import json; import sys; print json.load(sys.stdin)$1"
+}
+
+INSTALL_DIR=/root/nethserver-enterprise-install
+LOG_FILE="$INSTALL_DIR/install.log"
+
+# Prepare the installer directory
+mkdir -p $INSTALL_DIR
 # Cleanup log file
 > ${LOG_FILE}
 # Redirecting evertything to the log file
 # FD 3 can be used to write on the console
 exec 3>&1 1>>${LOG_FILE} 2>&1
+
+SECRET=${1}
+
+if [[ -z ${SECRET} ]]; then
+    exit_help "The SECRET argument is missing"
+fi
+
+chmod 600 $LOG_FILE
+
+API_RESPONSE=$(curl -s -L -X POST -H "Content-type: application/json" -H "Accept: application/json" -d "{\"secret\": \"${SECRET}\"}" "https://my.nethesis.it/api/systems/info")
+if [[ -z ${API_RESPONSE} ]]; then
+    exit_error "Could not get remote API response"
+fi
+
+echo "[NOTICE] API_RESPONSE: ${API_RESPONSE}" 1>&2
+
+SYSTEM_ID=$(json_pick '["uuid"]' <<<"${API_RESPONSE}")
+if [[ -z ${SYSTEM_ID} ]]; then
+    exit_error "Could not parse SYSTEM_ID from API response:" $(json_pick '["error"]["message"]' <<<"${API_RESPONSE}")
+fi
+
+export YUM1=${SYSTEM_ID}
+export YUM0=no
 
 centos_release=$(cat /etc/redhat-release  | grep -oP "\d\.\d\.\d+")
 
@@ -193,19 +233,6 @@ http_caching=none
 mirrorlist_expire=7200
 metadata_expire=7200
 
-[nethesis-testing]
-name=Nethesis Testing $releasever
-mirrorlist=http://mirrorlist.nethesis.it/?systemid=$YUM1&repo=nethesis-testing&arch=$basearch&nsversion=$nsrelease
-failovermethod=priority
-gpgcheck=1
-repo_gpgcheck=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-NethServer-$releasever
-enablegroups=0
-enabled=0
-http_caching=none
-mirrorlist_expire=7200
-metadata_expire=7200
-
 EOF
 
 echo $centos_release > /etc/yum/vars/nsrelease
@@ -223,7 +250,7 @@ if [ $? -gt 0 ]; then
     exit_error "Can't import GPG keys!"
 fi
 
-out "Starting installation process. It will take a while..."
+out "Starting installation process. It will take a while ..."
 yum --disablerepo=\* --enablerepo=nh-\* --disablerepo=nh-epel install epel-release deltarpm -y
 
 if [ $? -gt 0 ]; then
@@ -231,9 +258,9 @@ if [ $? -gt 0 ]; then
 fi
 
 out "Extracting nethserver-register configuration ..."
-yum --disablerepo=\* --enablerepo=nh-\* downloadonly --downloaddir=$TMP_DIR nethserver-register -y
+yum -y --disablerepo=\* --enablerepo=nh-\*,nethesis-updates --downloadonly --downloaddir=$INSTALL_DIR install nethserver-register
 pushd /
-rpm2cpio $TMP_DIR/nethserver-register-*.rpm | cpio -imdv ./etc/e-smith/db/configuration/force/sysconfig/Version
+rpm2cpio $INSTALL_DIR/nethserver-register-*.rpm | cpio -imdv ./etc/e-smith/db/configuration/force/sysconfig/Version
 if [ $? -gt 0 ]; then
     exit_error "Can't install nethserver-register"
 fi
@@ -244,7 +271,11 @@ nethserver_release=$(cat /etc/e-smith/db/configuration/force/sysconfig/Version)
 latest_release=$(echo -e "$centos_release\n$nethserver_release" | sort -V -r | head -n 1)
 
 if [ "$latest_release" == "$nethserver_release" ]; then
-    out "Forcing CentOS upgrade from $centos_release to $nethserver_release"
+    if [ "$centos_release" == "$nethserver_release" ]; then
+        out "Installing updates for CentOS $centos_release ..."
+    else
+        out "Forcing CentOS upgrade from $centos_release to $nethserver_release ..."
+    fi
     yum --disablerepo=* --enablerepo=nh-\* update -y
     echo $nethserver_release > /etc/yum/vars/nsrelease
 fi
@@ -257,7 +288,7 @@ if [ $? -gt 0 ]; then
 fi
 
 out_c
-out "Configuring system, please wait..."
+out "Configuring system, please wait ..."
 rm -f /etc/yum/vars/nsrelease
 for UNIT in NetworkManager firewalld; do
     if systemctl is-active -q $UNIT; then
@@ -273,7 +304,7 @@ if [ $? -gt 0 ]; then
     exit_error "Configuration failed!"
 fi
 
-/sbin/e-smith/config setprop subscription SystemId "${SYSTEM_ID}"
+/sbin/e-smith/config setprop subscription SystemId "${SYSTEM_ID}" Secret "${SECRET}"
 /sbin/e-smith/signal-event software-repos-save
 
 end
