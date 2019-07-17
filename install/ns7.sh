@@ -305,6 +305,6 @@ if [ $? -gt 0 ]; then
 fi
 
 /sbin/e-smith/config setprop subscription SystemId "${SYSTEM_ID}" Secret "${SECRET}"
-/sbin/e-smith/signal-event software-repos-save
+/sbin/e-smith/signal-event nethserver-subscription-save
 
 end
