@@ -93,7 +93,7 @@ print_usage
 trap 'out_c "   Aborted"; exit 2' SIGINT
 
 
-while [[ -z $SECRET ]]; do
+while [[ -z $SYSTEM_ID ]]; do
     if ((ATTEMPT >= 5)); then
         # Too much errors: give an hint and exit
         exit_error "Too much errors"
@@ -110,14 +110,12 @@ while [[ -z $SECRET ]]; do
     API_RESPONSE=$(curl -sS -L -X POST -H "Content-type: application/json" -H "Accept: application/json" -d "{\"secret\": \"${SECRET}\"}" "https://my.nethesis.it/api/systems/info")
     echo "[NOTICE] API_RESPONSE: ${API_RESPONSE}" 1>&2
     if [[ -z ${API_RESPONSE} ]]; then
-        SECRET=""
         out "Error: could not get remote API response, please try again..."
         continue
     fi
 
     SYSTEM_ID=$(json_pick '["uuid"]' <<<"${API_RESPONSE}")
     if [[ -z ${SYSTEM_ID} ]]; then
-        SECRET=""
         out "Remote error:" $(json_pick '["error"]["message"]' <<<"${API_RESPONSE}") " Please try again..."
         continue
     fi
