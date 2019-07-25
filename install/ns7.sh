@@ -57,16 +57,18 @@ function exit_error
 }
 
 
-function exit_help
+function print_usage
 {
-    out_c "[ERROR] bad invocation! " "${@}"
     out_c
-    out_c "Usage:"
-    out_c "    curl -sS https://go.nethesis.it/install/ns7.sh | bash -s - <SECRET>"
+    out_c '** NethServer Enterprise network installer **'
     out_c
-    out_c "Create a new server and get the SECRET token here:"
-    out_c "    https://my.nethesis.it/#/servers?action=newServer"
-    exit 1
+    out_c 'This script must run on a pristine CentOS minimal system'
+    out_c 'Create a new server and get the SECRET token here:'
+    out_c '  https://my.nethesis.it/#/servers?action=newServer'
+    out_c
+    out_c '  - Enter the SECRET token to start the installation'
+    out_c '  - Type Ctrl+C to exit the procedure'
+    out_c
 }
 
 function json_pick
@@ -84,26 +86,45 @@ mkdir -p $INSTALL_DIR
 # Redirecting evertything to the log file
 # FD 3 can be used to write on the console
 exec 3>&1 1>>${LOG_FILE} 2>&1
-
-SECRET=${1}
-
-if [[ -z ${SECRET} ]]; then
-    exit_help "The SECRET argument is missing"
-fi
-
 chmod 600 $LOG_FILE
 
-API_RESPONSE=$(curl -s -L -X POST -H "Content-type: application/json" -H "Accept: application/json" -d "{\"secret\": \"${SECRET}\"}" "https://my.nethesis.it/api/systems/info")
-if [[ -z ${API_RESPONSE} ]]; then
-    exit_error "Could not get remote API response"
-fi
+print_usage
 
-echo "[NOTICE] API_RESPONSE: ${API_RESPONSE}" 1>&2
+trap 'out_c "   Aborted"; exit 2' SIGINT
 
-SYSTEM_ID=$(json_pick '["uuid"]' <<<"${API_RESPONSE}")
-if [[ -z ${SYSTEM_ID} ]]; then
-    exit_error "Could not parse SYSTEM_ID from API response:" $(json_pick '["error"]["message"]' <<<"${API_RESPONSE}")
-fi
+
+while [[ -z $SECRET ]]; do
+    if ((ATTEMPT >= 5)); then
+        # Too much errors: give an hint and exit
+        exit_error "Too much errors"
+    fi
+    out_c -n "SECRET> "
+    read SECRET
+    SECRET=$(echo $SECRET | xargs)
+    if [[ -z $SECRET ]]; then
+        continue
+    fi
+
+    ((++ATTEMPT))
+
+    API_RESPONSE=$(curl -sS -L -X POST -H "Content-type: application/json" -H "Accept: application/json" -d "{\"secret\": \"${SECRET}\"}" "https://my.nethesis.it/api/systems/info")
+    echo "[NOTICE] API_RESPONSE: ${API_RESPONSE}" 1>&2
+    if [[ -z ${API_RESPONSE} ]]; then
+        SECRET=""
+        out "Error: could not get remote API response, please try again..."
+        continue
+    fi
+
+    SYSTEM_ID=$(json_pick '["uuid"]' <<<"${API_RESPONSE}")
+    if [[ -z ${SYSTEM_ID} ]]; then
+        SECRET=""
+        out "Remote error:" $(json_pick '["error"]["message"]' <<<"${API_RESPONSE}") " Please try again..."
+        continue
+    fi
+done
+
+trap - SIGINT
+
 
 export YUM1=${SYSTEM_ID}
 export YUM0=no
