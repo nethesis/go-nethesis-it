@@ -95,8 +95,8 @@ trap 'out_c "   Aborted"; exit 2' SIGINT
 
 while [[ -z $SYSTEM_ID ]]; do
     if ((ATTEMPT >= 5)); then
-        # Too much errors: give an hint and exit
-        exit_error "Too much errors"
+        # Too many errors: give an hint and exit
+        exit_error "Too many errors"
     fi
     out_c -n "SECRET> "
     read SECRET
