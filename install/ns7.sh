@@ -88,6 +88,11 @@ mkdir -p $INSTALL_DIR
 exec 3>&1 1>>${LOG_FILE} 2>&1
 chmod 600 $LOG_FILE
 
+if [[ -f /etc/nethserver-release ]]; then
+    out "[ERROR] It seems NethServer Enterprise was already installed. Aborted."
+    exit 1
+fi
+
 print_usage
 
 trap 'out_c "   Aborted"; exit 2' SIGINT
