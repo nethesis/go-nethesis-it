@@ -89,7 +89,8 @@ exec 3>&1 1>>${LOG_FILE} 2>&1
 chmod 600 $LOG_FILE
 
 if [[ -f /etc/nethserver-release ]]; then
-    out "[ERROR] It seems NethServer Enterprise was already installed. Aborted."
+    out "[ERROR] It seems NethServer was already installed."
+    out "[ERROR] This script must run on a pristine CentOS minimal system. Aborted."
     exit 1
 fi
 
