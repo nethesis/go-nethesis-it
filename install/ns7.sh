@@ -133,7 +133,7 @@ trap - SIGINT
 export YUM1=${SYSTEM_ID}
 export YUM0=no
 
-centos_release=$(cat /etc/redhat-release  | grep -oP "\d\.\d\.\d+")
+centos_release=$(grep -oP "\d\.\d+\.\d+" /etc/system-release)
 
 cat >/etc/yum.repos.d/subscription.repo <<'EOF'
 #
