@@ -282,15 +282,6 @@ if [ $? -gt 0 ]; then
     exit_error "Can't install epel-release!"
 fi
 
-out "Extracting nethserver-register configuration ..."
-yumdownloader -y --disablerepo=\* --enablerepo=nethesis-updates --destdir=$INSTALL_DIR nethserver-register
-pushd /
-rpm2cpio $INSTALL_DIR/nethserver-register-*.rpm | cpio -imdv ./etc/e-smith/db/configuration/force/sysconfig/Version
-if [ $? -gt 0 ]; then
-    exit_error "Can't install nethserver-register"
-fi
-popd
-
 # If NethServer release is greater than installed CentOS, force the upgrade
 nethserver_release=$(cat /etc/e-smith/db/configuration/force/sysconfig/Version)
 latest_release=$(echo -e "$centos_release\n$nethserver_release" | sort -V -r | head -n 1)
