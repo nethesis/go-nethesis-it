@@ -27,13 +27,13 @@ function end {
     hostname=`/sbin/e-smith/db configuration get SystemName`
     domainname=`/sbin/e-smith/db configuration get DomainName`
     out_c
-    out_c -n "    https://$hostname.$domainname:980 "
+    out_c -n "    https://$hostname.$domainname:9090 "
     for k in `/sbin/e-smith/db networks keys`
     do
        role=`/sbin/e-smith/db networks getprop $k role`
        if [ "$role" == "green" ]; then
            ip=$(/sbin/e-smith/db networks getprop $k ipaddr)
-           out_c " (or https://$ip:980)"
+           out_c " (or https://$ip:9090)"
        fi
     done
     out_c
